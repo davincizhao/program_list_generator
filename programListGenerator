@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+import sys, os
+from openpyxl import load_workbook
+from datetime import date, timedelta, datetime
+
+
+#check xlsx whether exists or not
+if ((os.path.exists(sys.argv[1])) == False):
+	#logger.error('error message')
+	print("File {} do not exist,".format(sys.argv[1]),"please double check")
+	exit()
+
+
+file_name = sys.argv[1]
+print(file_name,type(file_name))
+#open xlsx file 
+wb = load_workbook(file_name)
+
+y_m_d_b = file_name.split('.')
+
+def date_add(list_start_date,number_of_days):
+	string_start_day = list_start_date[0] + '.' + list_start_date[1] + '.' + list_start_date[2]
+	start_month_day = list_start_date[1] +  list_start_date[2]
+	new_day = date(int(list_start_date[0]),int(list_start_date[1]),int(list_start_date[2])) + timedelta(days=number_of_days)
+	string_new_date = new_day.strftime("%Y.%m.%d")
+	new_month_day = new_day.strftime("%m%d")
+	return string_start_day,start_month_day,string_new_date,new_month_day
+
+
+def generate_program(input_file_name):
+	#add one day to start day
+	yesterday,yesterday_program_name,today,today_program_name = date_add(input_file_name,1)
+	_,_,tomorrow,tomorrow_program_name = date_add(input_file_name,2)
+
+	#yesterday_program_name = input_file_name[1] +  input_file_name[2]
+
+	print(yesterday_program_name,today_program_name)
+	print("yesterday:",yesterday,"\n today",today,"\ntomorrow",tomorrow)
+
+	#open first sheet 
+	ws = wb['虚拟频道节目单报表']
+	#save last Friday_program_name 
+	wk_date = datetime.strptime(today,"%Y.%m.%d").weekday()
+	last_friday = datetime.strptime(today,"%Y.%m.%d") - timedelta(wk_date +3)
+	print("last_friday=",last_friday)
+	last_Friday_pragram_name = last_friday.strftime("%m%d")
+	drama_name = 'drama'
+
+	#search cell value which include yesterday
+
+	for row in ws.rows:
+		for cell in row:
+			#change the date of time schedule 
+			if today in cell.value:
+				cell.value = cell.value.replace(today,tomorrow)
+			if yesterday in cell.value:
+				cell.value = cell.value.replace(yesterday,today)
+			#change drame_name
+			if(drama_name in cell.value):
+				cell.value = cell.value.replace(today_program_name,tomorrow_program_name)
+				cell.value = cell.value.replace(yesterday_program_name,today_program_name)
+			
+			#change progame_name
+			if (yesterday_program_name in cell.value or last_Friday_pragram_name in cell.value) :
+				#if today is monday, so change the dailynews and hk 
+				if wk_date == 0:
+					cell.value = cell.value.replace(last_Friday_pragram_name,today_program_name)
+					cell.value = cell.value.replace(yesterday_program_name,today_program_name)
+					
+			
+				#if today is weekend and program is dailynews or hk, don't change the name.
+				if (0 < wk_date <= 4 ):
+					cell.value = cell.value.replace(yesterday_program_name,today_program_name)
+				elif cell.value.find('dailynews') == -1 and cell.value.find('hk') == -1:
+					cell.value = cell.value.replace(yesterday_program_name,today_program_name)
+
+
+
+	# save file today.xlsx			
+	wb.save(today+'.xlsx')
+
+	
+for i in range(7):
+	
+	new_day = date(int(y_m_d_b[0]),int(y_m_d_b[1]),int(y_m_d_b[2])) + timedelta(days=i)
+	string_new_date = new_day.strftime("%Y.%m.%d")
+	list_date = string_new_date.split('.')
+	print("i",i,list_date)
+	generate_program(list_date)
+	
